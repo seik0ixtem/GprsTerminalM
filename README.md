@@ -16,7 +16,7 @@ Where it should work
 
 - It is being tested on Telit GL868-Dual GSM module, so it must work with them.
 
-- I believe, that it should *MAINLY* work on most of other Telit modules with python support.
+- I believe, that it should **MAINLY** work on most of other Telit modules with python support.
 
 
 What this script is designed for
