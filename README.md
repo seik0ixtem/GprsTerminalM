@@ -52,6 +52,23 @@ Also, device should do some work on its own:
 - Make some specific operations with devices attached to its serial
 
 
+How to use
+-----------------------------
+
+This is not the only option, but it works:
+
+1. Test this code on your own using, for example, Telit-Loader
+
+2. Upload this code to device using, for example, Telit-Loader
+
+3. Make main.py the main script on device using, for example, Telit-Loader
+
+4. Reboot device in python mode (it differs with each manufacturer, read the manuals). Wait until all scripts compile (first time I waited about an hour).
+
+5. See it working (or not). It will work differently with different settings.
+
+
+
 Notes
 ------------------------------
 
