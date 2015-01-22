@@ -1,0 +1,7 @@
+# ignore compiled
+*.pyc
+
+# ignore files with private data
+settings.ini
+
+
