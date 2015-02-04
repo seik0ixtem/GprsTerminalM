@@ -57,7 +57,9 @@ import gsm
 GSM = gsm.GSM(CONFIG, DEBUG, SERIAL)
 
 import sms
-import sms_message
+SMS = sms.SMS(GSM)
+
+import sms_msg
 
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 C_SCFG1 = 'AT#SCFG=1,1,' + CONFIG.get('TCP_MAX_LENGTH') + ',90,30,2\r'   # AT КОМАНДА НАСТРОЙКИ СОКЕТА №1,"2" - data sending timeout; after this period data are sent also if they’re less than max packet size.
@@ -87,14 +89,14 @@ def ping(trys):
     return (-1)
 
 def smsProcessing():
-    message = sms.receiveSms()
+    message = SMS.receiveSms()
     if message is not None:
 	text = message.getText()
 	DEBUG.send('Got incoming SMS from ' + message.getNumber() + ' with text: "' + text + '"')
         if (text == 'WAKEUPNEO'):
-		sms.sendSms(sms_msg.SmsMessage('0', message.getNumber(), '', 'Follow the white rabbit'))
+		SMS.sendSms(sms_msg.SmsMessage('0', message.getNumber(), '', 'Follow the white rabbit'))
 		GSM.reboot()
-        sms.deleteSms(message.getId())
+        SMS.deleteSms(message.getId())
 
 
 
@@ -233,19 +235,19 @@ try:
         try:
             data = GSM.receiveMDM()
         except Exception, e:
-            DEBUG.send(e)
+            DEBUG.send(str(e))
         if(len(data) > 0):
             SERIAL.send(data)
 
-       if ((MOD.secCount() - CHECK_SMS_TIMER) > CONFIG.get('SMS_CHECK_PERIOD')):
-	       smsProcessing()
-	       CHECK_SMS_TIMER = MOD.secCount()
+        if ((MOD.secCounter() - CHECK_SMS_TIMER) > CONFIG.get('SMS_CHECK_PERIOD')):
+		DEBUG.send("Processing SMS")
+		smsProcessing()
+	      	CHECK_SMS_TIMER = MOD.secCounter()
 
         resetWatchdog()
     
 except Exception, e:
-    DEBUG.send('Exception!')
-    DEBUG.send(str(e))
+    DEBUG.send('Exception!' + str(e))
     GSM.reboot()
         
 
