@@ -1,6 +1,9 @@
 # ignore compiled
 *.pyc
 
+# ignore viw swp
+*.swp
+
 # ignore files with private data
 settings.ini
 
