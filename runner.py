@@ -56,6 +56,9 @@ SERIAL = mserial.Serial(CONFIG, DEBUG)
 import gsm
 GSM = gsm.GSM(CONFIG, DEBUG, SERIAL)
 
+import sms
+import sms_message
+
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 C_SCFG1 = 'AT#SCFG=1,1,' + CONFIG.get('TCP_MAX_LENGTH') + ',90,30,2\r'   # AT КОМАНДА НАСТРОЙКИ СОКЕТА №1,"2" - data sending timeout; after this period data are sent also if they’re less than max packet size.
 C_SCFGEXT1 = 'AT#SCFGEXT=1,1,0,0,0,0\r'  # COKET1, SRING + DATA SIZE, receive in TEXT, keepalive off, autoreceive off, send in TEXT
@@ -82,6 +85,18 @@ def ping(trys):
                 return (0)
             resetWatchdog()
     return (-1)
+
+def smsProcessing():
+    message = sms.receiveSms()
+    if message is not None:
+	text = message.getText()
+	DEBUG.send('Got incoming SMS from ' + message.getNumber() + ' with text: "' + text + '"')
+        if (text == 'WAKEUPNEO'):
+		sms.sendSms(sms_msg.SmsMessage('0', message.getNumber(), '', 'Follow the white rabbit'))
+		GSM.reboot()
+        sms.deleteSms(message.getId())
+
+
 
 try:
 #    REG_REPLY = UTILS.getServerReply(CONFIG.get('ID_SERVER'))               # РАСЧЕТ ОТВЕТА РЕГИСТРАЦИИ НА СЕРВЕРЕ НА ОСНОВЕ СВОЕГО ID_SERVER
@@ -121,6 +136,7 @@ try:
     # Timers
     #
     TCP_LOG_TIMER = 0
+    CHECK_SMS_TIMER = MOD.secCounter()
 
     while(1):
         # check context
@@ -221,15 +237,16 @@ try:
         if(len(data) > 0):
             SERIAL.send(data)
 
-       # just dummy sleep
-       #MOD.sleep(10)
+       if ((MOD.secCount() - CHECK_SMS_TIMER) > CONFIG.get('SMS_CHECK_PERIOD')):
+	       smsProcessing()
+	       CHECK_SMS_TIMER = MOD.secCount()
 
         resetWatchdog()
     
 except Exception, e:
     DEBUG.send('Exception!')
     DEBUG.send(str(e))
-    #GSM.reboot()
+    GSM.reboot()
         
 
         
