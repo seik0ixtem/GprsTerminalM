@@ -1,3 +1,6 @@
+# magic comment to allow russian bukvs
+# coding=UTF8
+
 '''
 Copyright (c) 2013, ОАО "ТЕЛЕОФИС"
 
@@ -23,68 +26,47 @@ Copyright (c) 2013, ОАО "ТЕЛЕОФИС"
 ВОЗМОЖНОСТИ ТАКИХ УБЫТКОВ.
 '''
 
-import gsm
 import sms_msg
 
-def init():
-    gsm.sendAT('AT#SMSMODE=1', 'OK')
-    gsm.sendAT('AT+CMGF=1', 'OK')
+class SMS:
+	def __init__(self, gsm):
+		self.gsm= gsm
 
-def receiveSms():
-    r, d = gsm.sendAT("AT+CMGL=ALL", "OK", 5)
-    if(r == 0):
-        position = d.find('+CMGL')
-        if(position != -1):
-            d = d[position:]
-            one = d.split('\r')
-            if(len(one) > 1):
-                header = one[0].strip()[7:]
-                data = one[1].strip()
-                header_data = header.split(',')
-                if(len(header_data) > 5):
-                    index = header_data[0]
-                    status = header_data[1].replace('"', '')
-                    number = header_data[2].replace('"', '')
-                    time = header_data[4].replace('"', '') + ',' + header_data[5].replace('"', '')
-                    sms = sms_msg.SmsMessage(index, number, time, data)
-                    return sms
-    return None
+	def init(self):
+		gsm.sendATDefault('AT#SMSMODE=1\r', 'OK')
+		gsm.sendATDefault('AT+CMGF=1\r', 'OK')
+
+	def receiveSms(self):
+		r, d = gsm.sendAT("AT+CMGL=ALL\r", "OK", 5)
+		if(r == 0):
+			position = d.find('+CMGL')
+			if(position != -1):
+				d = d[position:]
+				one = d.split('\r')
+				if(len(one) > 1):
+					header = one[0].strip()[7:]
+					data = one[1].strip()
+					header_data = header.split(',')
+					if(len(header_data) > 5):
+						index = header_data[0]
+						status = header_data[1].replace('"', '')
+						number = header_data[2].replace('"', '')
+						time = header_data[4].replace('"', '') + ',' + header_data[5].replace('"', '')
+						sms = sms_msg.SmsMessage(index, number, time, data)
+						return sms
+		return None
     
-def sendSms(message):
-    r, d = gsm.sendAT("AT+CMGS=" + message.getNumber(), ">", 5)
-    if(r == 0):
-        r, d = gsm.sendAT(message.getText() + chr(0x1A), "OK", 10)
-        if(r == 0):
-            return 0
-    return -1
+	def sendSms(self, message):
+		r, d = gsm.sendAT("AT+CMGS=" + message.getNumber() + "\r", ">", 5)
+		if(r == 0):
+			r, d = gsm.sendAT(message.getText() + chr(0x1A) + "\r", "OK", 10)
+			if(r == 0):
+				return 0
+		return -1
         
         
-def deleteSms(index):
-    r, d = gsm.sendAT("AT+CMGD=" + index, "OK", 5)
-    if(r == 0):
-        return 0
-    return -1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-receiveSms()
+	def deleteSms(self, index):
+		r, d = gsm.sendAT("AT+CMGD=" + index + "\r", "OK", 5)
+		if(r == 0):
+			return 0
+		return -1
