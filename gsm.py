@@ -105,7 +105,7 @@ class GSM:
     
     def sendATDefault(self, request, response):
         at_timeout = int(self.config.get('TIMEOUT_AT'))
-        a, s = self.sendAT(request, response, 1, at_timeout)
+        a, s = self.sendAT(request, response, 1, at_timeout, self.config.get('CSD_ENABLED'))
         if (a < 0):
             raise Exception, 'ERROR. sendAT(): ' + request + '#' + response
 

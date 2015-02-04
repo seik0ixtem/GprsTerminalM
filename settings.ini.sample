@@ -32,3 +32,4 @@ ATRUN_ENABLED::0::Включение службы TCP AT Run
 ATRUN_HOST::10.11.12.13::Адрес службы TCP AT Run
 ATRUN_PORT::6010::Порт службы TCP AT Run
 SMS_CHECK_PERIOD::60::Period for incoming SMS check (in seconds)
+CSD_ENABLED::0::Enabling CSD support
