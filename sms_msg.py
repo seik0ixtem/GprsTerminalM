@@ -1,3 +1,6 @@
+# magic comment to allow russian bukvs
+# coding=UTF8
+
 '''
 Copyright (c) 2013, ОАО "ТЕЛЕОФИС"
 
