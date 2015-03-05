@@ -57,12 +57,12 @@ import gsm
 GSM = gsm.GSM(CONFIG, DEBUG, SERIAL)
 
 import sms
-SMS = sms.SMS(GSM)
+SMS = sms.SMS(GSM, DEBUG)
 
 import sms_msg
 
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-C_SCFG1 = 'AT#SCFG=1,1,' + CONFIG.get('TCP_MAX_LENGTH') + ',90,30,2\r'   # AT КОМАНДА НАСТРОЙКИ СОКЕТА №1,"2" - data sending timeout; after this period data are sent also if they’re less than max packet size.
+C_SCFG1 = 'AT#SCFG=1,1,' + CONFIG.get('TCP_MAX_LENGTH') + ',90,30,2\r'	 # AT КОМАНДА НАСТРОЙКИ СОКЕТА №1,"2" - data sending timeout; after this period data are sent also if they’re less than max packet size.
 C_SCFGEXT1 = 'AT#SCFGEXT=1,1,0,0,0,0\r'  # COKET1, SRING + DATA SIZE, receive in TEXT, keepalive off, autoreceive off, send in TEXT
 
 C_SCFG2 = 'AT#SCFG=2,1,' + CONFIG.get('TCP_MAX_LENGTH') + ',120,30,2\r'   # AT КОМАНДА НАСТРОЙКИ СОКЕТА №2 - Сокет для определения точного времени 15 сек на попытку подключенния
@@ -72,183 +72,193 @@ C_SCFG3 = 'AT#SCFG=3,1,' + CONFIG.get('TCP_MAX_LENGTH') + ',300,30,2\r'   #
 C_SCFGEXT3 = 'AT#SCFGEXT=3,1,0,2,0,0\r'  # keep alive on
 
 def initWatchdog():
-    MOD.watchdogEnable(int(CONFIG.get('WATCHDOG_PERIOD')))
-    
+	MOD.watchdogEnable(int(CONFIG.get('WATCHDOG_PERIOD')))
+	
 def resetWatchdog():
-    MOD.watchdogReset()
-    
+	MOD.watchdogReset()
+	
 def ping(trys):
-    servers = CONFIG.get('PING_IPS').split(',')
-    for i in range(trys):
-        for server in servers:
-            DEBUG.send('Send ping to ' + server)
-            res = GSM.ping(server)
-            if(res == 0):
-                return (0)
-            resetWatchdog()
-    return (-1)
+	servers = CONFIG.get('PING_IPS').split(',')
+	for i in range(trys):
+		for server in servers:
+			DEBUG.send('Send ping to ' + server)
+			res = GSM.ping(server)
+			if(res == 0):
+				return (0)
+			resetWatchdog()
+	return (-1)
 
 def smsProcessing():
-    message = SMS.receiveSms()
-    if message is not None:
-	text = message.getText()
-	DEBUG.send('Got incoming SMS from ' + message.getNumber() + ' with text: "' + text + '"')
-        if (text == 'WAKEUPNEO'):
-		SMS.sendSms(sms_msg.SmsMessage('0', message.getNumber(), '', 'Follow the white rabbit'))
-		GSM.reboot()
-        SMS.deleteSms(message.getId())
+	message = SMS.receiveSms()
+	if message is not None:
+		text = message.getText()
+		DEBUG.send('Got incoming SMS from ' + message.getNumber() + ' with text: "' + text + '"')
 
+		# always delete sms, maan
+		SMS.deleteSms(message.getId())
+
+		if (text == 'WAKEUPNEO'):
+			SMS.sendSms(sms_msg.SmsMessage('0', message.getNumber(), '', 'Follow the white rabbit'))
+			GSM.reboot()
 
 
 try:
-#    REG_REPLY = UTILS.getServerReply(CONFIG.get('ID_SERVER'))               # РАСЧЕТ ОТВЕТА РЕГИСТРАЦИИ НА СЕРВЕРЕ НА ОСНОВЕ СВОЕГО ID_SERVER
-#    REG_LOG_REPLY = UTILS.getServerReply(CONFIG.get('ID_LOG_SERVER'))
-    
-    DEBUG.send(' SCRIPT STARTED. Version: ' + version + '\r\nCopyright 2012.' \
-                'Teleofis Wireless Communications\r\n==============' \
-                '==================================')
+#	 REG_REPLY = UTILS.getServerReply(CONFIG.get('ID_SERVER'))				 # РАСЧЕТ ОТВЕТА РЕГИСТРАЦИИ НА СЕРВЕРЕ НА ОСНОВЕ СВОЕГО ID_SERVER
+#	 REG_LOG_REPLY = UTILS.getServerReply(CONFIG.get('ID_LOG_SERVER'))
+	
+	initWatchdog()
+	SERIAL.init()						# ИНИЦИАЛИЗАЦИЯ ПОСЛЕДОВАТЕЛЬНОГО ПОРТА
+	GSM.initModem()						# НАСТРОЙКА ПАРАМЕТРОВ GSM МОДЕМА
+	# GSM.initStartMode()				  # НАСТРОЙКА РЕЖИМА ЗАПУСКА СКРИПТОВ
+	GSM.initSim()						# ПРОВЕРКА РАБОТОСПОСОБНОСТИ SIM КАРТЫ
+	GSM.initCreg()						# ПРОВЕРКА РЕГИСТРАЦИИ В СЕТИ
+	GSM.initCsq()						# ПОЛУЧЕНИЕ УРОВНЯ СИГНАЛА В АНТЕННЕ
+	SMS.init()
 
-    initWatchdog()
-    SERIAL.init()                       # ИНИЦИАЛИЗАЦИЯ ПОСЛЕДОВАТЕЛЬНОГО ПОРТА
-    GSM.initModem()                     # НАСТРОЙКА ПАРАМЕТРОВ GSM МОДЕМА
-    # GSM.initStartMode()                 # НАСТРОЙКА РЕЖИМА ЗАПУСКА СКРИПТОВ
-    GSM.initSim()                       # ПРОВЕРКА РАБОТОСПОСОБНОСТИ SIM КАРТЫ
-    GSM.initCreg()                      # ПРОВЕРКА РЕГИСТРАЦИИ В СЕТИ
-    GSM.initCsq()                       # ПОЛУЧЕНИЕ УРОВНЯ СИГНАЛА В АНТЕННЕ
-    try:
-        GSM.initSocket(C_SCFG1, C_SCFGEXT1) # ИНИЦИАЛИЗАЦИЯ Socket 1
-    #    GSM.initSocket(C_SCFG2, C_SCFGEXT2) # ИНИЦИАЛИЗАЦИЯ Socket 2
-    #    GSM.initSocket(C_SCFG3, C_SCFGEXT3) # ИНИЦИАЛИЗАЦИЯ Socket 3
-    except Exception, e:
-        DEBUG.send('Socket init exception: ' + e)
-    GSM.initContext()                   # НАСТРОЙКА ПАРАМЕТРОВ PDP КОНТЕКСТА
-    
-    if(CONFIG.get('ATRUN_ENABLED') == '1'):
-        GSM.startAtRun()
-    
-    #
-    # Status flags
-    #
-    #DATA_AUTH = 0
-    #LOG_AUTH = 0
-    DATA_SOCKET = 0
-    #LOG_SOCKET = 0
-    
-    #
-    # Timers
-    #
-    TCP_LOG_TIMER = 0
-    CHECK_SMS_TIMER = MOD.secCounter()
+	DEBUG.send(' SCRIPT STARTED. Version: ' + version + '\r\nCopyright 2012.' \
+				'Teleofis Wireless Communications\r\n==============' \
+				'==================================')
 
-    while(1):
-        # check context
-        context = GSM.checkContext()
-        if(context != '1'):
-            DEBUG.send('Activation GPRS context')
-            GSM.activateContext()
-        
-        # check socket 1
-        socket = GSM.checkSocket('1')
-        if(socket not in ['1', '2', '3']):   # Socket closed
-            DEBUG.send('Trying to open a socket #1 (data)')
-            DATA_SOCKET = 0
-        #    DATA_AUTH = 0
-            try:
-                GSM.connect('1', CONFIG.get('DEST_IP'), CONFIG.get('DEST_PORT'), 3)
-                DATA_SOCKET = 1
-            except Exception, e:
-                DEBUG.send(str(e))
-                ping_trys = int(CONFIG.get('PING_TRYS'))
-                res = ping(ping_trys)
-                if(res < 0):
-                    raise Exception, 'ERROR. Ping failed'
-                continue
-        
-        # data channel authorization
-        #if((CONFIG.get('REG_SERVER') == '1') and (DATA_SOCKET == 1) and (DATA_AUTH == 0)):
-        #    DEBUG.send('Start authorization on socket #1 (data)')
-        #    MOD.sleep(20)
-        #    data = ''
-        #    try:
-        #        data = GSM.receiveMDM()
-        #    except Exception, e:
-        #        DEBUG.send(e)
-        #    if((len(data) > 0)): # and (data.find(AUTH_REQUEST) != -1)):
-        #        if(CONFIG.get('AUTH_TYPE') == '0'):
-        #            GSM.sendMDM(REG_REPLY)
-        #        else:
-        #            imei = GSM.getImei()
-        #            DEBUG.send('IMEI: %s' % (imei))
-        #            auth = UTILS.getAnalitycsReply(int(imei))
-        #            b = ''
-        #            for i in auth:
-        #                b = b + chr(i)
-        #            DEBUG.send('AUTH REPLY: %s' % (b))
-        #            GSM.sendMDM(b)
-        #    else:
-        #        DEBUG.send('Authorization failed')
-        #        continue
-        #    DATA_AUTH = 1
-        #    DEBUG.send('Authorization complete')
-        #
-        #if(CONFIG.get('AUTH_TYPE') != '1'):
-        #    if(CONFIG.get('DEBUG_TCP') == '1'):
-        #        socket = GSM.checkSocket('2')
-        #        if(socket not in ['1', '2', '3']):   # Socket closed
-        #            DEBUG.send('Trying to open a socket #2 (log)')
-        #            LOG_SOCKET = 0
-        #            LOG_AUTH = 0
-        #            try:
-        #                GSM.connect('2', CONFIG.get('LOG_IP'), CONFIG.get('LOG_PORT'), 3)
-        #                LOG_SOCKET = 1
-        #            except Exception, e:
-        #                DEBUG.send(e)
-            
-            # log channel authorization
-        #    if((CONFIG.get('REG_LOG_SERVER') == '1') and (LOG_SOCKET == 1) and (LOG_AUTH == 0)):
-        #        DEBUG.send('Start authorization on socket #2 (log)')
-        #        data = ''
-        #        try:
-        #            data = GSM.receive('2')
-        #        except Exception, e:
-        #            DEBUG.send(e)
-        #        if((len(data) > 0)): # and (data.find(AUTH_REQUEST) != -1)):
-        #            GSM.send(REG_LOG_REPLY, '2')
-        #        else:
-        #            DEBUG.send('Authorization failed')
-        #        LOG_AUTH = 1
-        #        DEBUG.send('Authorization complete')
-            
-            # send TCP debug info
-        #    if((CONFIG.get('DEBUG_TCP') == '1') and (MOD.secCounter() > TCP_LOG_TIMER) and (LOG_SOCKET == 1)):
-        #        buffer = DEBUG.getTcpBuffer()
-        #        GSM.send(buffer, '2')
-        #        TCP_LOG_TIMER = MOD.secCounter() + int(CONFIG.get('DEBUG_TCP_PERIOD'))
+	try:
+		GSM.initSocket(C_SCFG1, C_SCFGEXT1) # ИНИЦИАЛИЗАЦИЯ Socket 1
+	#	 GSM.initSocket(C_SCFG2, C_SCFGEXT2) # ИНИЦИАЛИЗАЦИЯ Socket 2
+	#	 GSM.initSocket(C_SCFG3, C_SCFGEXT3) # ИНИЦИАЛИЗАЦИЯ Socket 3
+	except Exception, e:
+		DEBUG.send('Socket init exception: ' + e)
+	GSM.initContext()					# НАСТРОЙКА ПАРАМЕТРОВ PDP КОНТЕКСТА
+	
+	if(CONFIG.get('ATRUN_ENABLED') == '1'):
+		GSM.startAtRun()
+	
+	#
+	# Status flags
+	#
+	#DATA_AUTH = 0
+	#LOG_AUTH = 0
+	DATA_SOCKET = 0
+	#LOG_SOCKET = 0
+	
+	#
+	# Timers
+	#
+	TCP_LOG_TIMER = 0
+	CHECK_SMS_TIMER = MOD.secCounter()
 
-        # serial to tcp
-        data = SERIAL.receive(int(CONFIG.get('TCP_MAX_LENGTH')))
-        if(len(data) > 0):
-            GSM.sendMDM(data)
-        
-        # tcp to serial
-        data = ''
-        try:
-            data = GSM.receiveMDM()
-        except Exception, e:
-            DEBUG.send(str(e))
-        if(len(data) > 0):
-            SERIAL.send(data)
+	while(1):
+		# check context
+		context = GSM.checkContext()
+		if(context != '1'):
+			DEBUG.send('Activation GPRS context')
+			GSM.activateContext()
+		
+		# check socket 1
+		socket = GSM.checkSocket('1')
+		if(socket not in ['1', '2', '3']):	 # Socket closed
+			DEBUG.send('Trying to open a socket #1 (data)')
+			DATA_SOCKET = 0
+		#	 DATA_AUTH = 0
+			try:
+				GSM.connect('1', CONFIG.get('DEST_IP'), CONFIG.get('DEST_PORT'), 3)
+				DATA_SOCKET = 1
+			except Exception, e:
+				DEBUG.send(str(e))
+				ping_trys = int(CONFIG.get('PING_TRYS'))
+				res = ping(ping_trys)
+				if(res < 0):
+					raise Exception, 'ERROR. Ping failed'
+				continue
+		
+		# data channel authorization
+		#if((CONFIG.get('REG_SERVER') == '1') and (DATA_SOCKET == 1) and (DATA_AUTH == 0)):
+		#	 DEBUG.send('Start authorization on socket #1 (data)')
+		#	 MOD.sleep(20)
+		#	 data = ''
+		#	 try:
+		#		 data = GSM.receiveMDM()
+		#	 except Exception, e:
+		#		 DEBUG.send(e)
+		#	 if((len(data) > 0)): # and (data.find(AUTH_REQUEST) != -1)):
+		#		 if(CONFIG.get('AUTH_TYPE') == '0'):
+		#			 GSM.sendMDM(REG_REPLY)
+		#		 else:
+		#			 imei = GSM.getImei()
+		#			 DEBUG.send('IMEI: %s' % (imei))
+		#			 auth = UTILS.getAnalitycsReply(int(imei))
+		#			 b = ''
+		#			 for i in auth:
+		#				 b = b + chr(i)
+		#			 DEBUG.send('AUTH REPLY: %s' % (b))
+		#			 GSM.sendMDM(b)
+		#	 else:
+		#		 DEBUG.send('Authorization failed')
+		#		 continue
+		#	 DATA_AUTH = 1
+		#	 DEBUG.send('Authorization complete')
+		#
+		#if(CONFIG.get('AUTH_TYPE') != '1'):
+		#	 if(CONFIG.get('DEBUG_TCP') == '1'):
+		#		 socket = GSM.checkSocket('2')
+		#		 if(socket not in ['1', '2', '3']):   # Socket closed
+		#			 DEBUG.send('Trying to open a socket #2 (log)')
+		#			 LOG_SOCKET = 0
+		#			 LOG_AUTH = 0
+		#			 try:
+		#				 GSM.connect('2', CONFIG.get('LOG_IP'), CONFIG.get('LOG_PORT'), 3)
+		#				 LOG_SOCKET = 1
+		#			 except Exception, e:
+		#				 DEBUG.send(e)
+			
+			# log channel authorization
+		#	 if((CONFIG.get('REG_LOG_SERVER') == '1') and (LOG_SOCKET == 1) and (LOG_AUTH == 0)):
+		#		 DEBUG.send('Start authorization on socket #2 (log)')
+		#		 data = ''
+		#		 try:
+		#			 data = GSM.receive('2')
+		#		 except Exception, e:
+		#			 DEBUG.send(e)
+		#		 if((len(data) > 0)): # and (data.find(AUTH_REQUEST) != -1)):
+		#			 GSM.send(REG_LOG_REPLY, '2')
+		#		 else:
+		#			 DEBUG.send('Authorization failed')
+		#		 LOG_AUTH = 1
+		#		 DEBUG.send('Authorization complete')
+		
+			# send TCP debug info
+		#	 if((CONFIG.get('DEBUG_TCP') == '1') and (MOD.secCounter() > TCP_LOG_TIMER) and (LOG_SOCKET == 1)):
+		#		 buffer = DEBUG.getTcpBuffer()
+		#		 GSM.send(buffer, '2')
+		#		 TCP_LOG_TIMER = MOD.secCounter() + int(CONFIG.get('DEBUG_TCP_PERIOD'))
 
-        if ((MOD.secCounter() - CHECK_SMS_TIMER) > CONFIG.get('SMS_CHECK_PERIOD')):
-		DEBUG.send("Processing SMS")
-		smsProcessing()
-	      	CHECK_SMS_TIMER = MOD.secCounter()
+		# serial to tcp
 
-        resetWatchdog()
-    
+		data = SERIAL.receive(int(CONFIG.get('TCP_MAX_LENGTH')))
+		if(len(data) > 0):
+			GSM.sendMDM(data)
+		
+		# tcp to serial
+		data = ''
+		try:
+			data = GSM.receiveMDM()
+		except Exception, e:
+			DEBUG.send(str(e))
+
+		if(len(data) > 0):
+			SERIAL.send(data)
+
+		if ((MOD.secCounter() - CHECK_SMS_TIMER) > int(CONFIG.get('SMS_CHECK_PERIOD'))):
+			DEBUG.send('Processing SMS')
+			smsProcessing()
+			CHECK_SMS_TIMER = MOD.secCounter()
+		else:
+			DEBUG.send('MOD.secCount() = ' + str(MOD.secCounter())
+				+ ', CHECK_SMS_TIMER = ' + str(CHECK_SMS_TIMER)
+				+ ', SMS_CHECK_PERIOD = ' + str(CONFIG.get('SMS_CHECK_PERIOD')));
+
+		resetWatchdog()
+	
 except Exception, e:
-    DEBUG.send('Exception!' + str(e))
-    GSM.reboot()
-        
+	DEBUG.send('Exception!' + str(e))
+	GSM.reboot()
+		
 
-        
+		
