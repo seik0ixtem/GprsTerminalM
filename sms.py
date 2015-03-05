@@ -29,16 +29,20 @@ Copyright (c) 2013, ОАО "ТЕЛЕОФИС"
 import sms_msg
 
 class SMS:
-	def __init__(self, gsm):
-		self.gsm= gsm
+	def __init__(self, gsm, debug):
+		self.gsm = gsm
+		self.debug = debug
 
 	def init(self):
-		gsm.sendATDefault('AT#SMSMODE=1\r', 'OK')
-		gsm.sendATDefault('AT+CMGF=1\r', 'OK')
+		self.gsm.sendATDefault('AT#SMSMODE=1\r', 'OK')
+		self.gsm.sendATDefault('AT+CMGF=1\r', 'OK')
+		self.debug.send('SMS.init() passed OK')
 
 	def receiveSms(self):
-		r, d = gsm.sendAT("AT+CMGL=ALL\r", "OK", 5)
+		self.debug.send('Trying to receive SMS messages...')
+		r, d = self.gsm.sendAT("AT+CMGL=ALL\r", "OK", 5)
 		if(r == 0):
+			self.debug.send('Got new messages, parsing then...')
 			position = d.find('+CMGL')
 			if(position != -1):
 				d = d[position:]
@@ -57,16 +61,16 @@ class SMS:
 		return None
     
 	def sendSms(self, message):
-		r, d = gsm.sendAT("AT+CMGS=" + message.getNumber() + "\r", ">", 5)
+		r, d = self.gsm.sendAT("AT+CMGS=" + message.getNumber() + "\r", ">", 5)
 		if(r == 0):
-			r, d = gsm.sendAT(message.getText() + chr(0x1A) + "\r", "OK", 10)
+			r, d = self.gsm.sendAT(message.getText() + chr(0x1A) + "\r", "OK", 10)
 			if(r == 0):
 				return 0
 		return -1
         
         
 	def deleteSms(self, index):
-		r, d = gsm.sendAT("AT+CMGD=" + index + "\r", "OK", 5)
+		r, d = self.gsm.sendAT("AT+CMGD=" + index + "\r", "OK", 5)
 		if(r == 0):
 			return 0
 		return -1
