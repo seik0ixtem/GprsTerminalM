@@ -101,6 +101,15 @@ def smsProcessing():
 			SMS.sendSms(sms_msg.SmsMessage('0', message.getNumber(), '', 'Follow the white rabbit'))
 			GSM.reboot()
 
+		# other cases - compound commands
+		words = text.split(' ')
+		
+		if (len(words) >= 3):
+			if (words[0] == "SET"):
+				CONFIG.set(words[1], words[2])
+				CONFIG.write()
+				SMS.sendSms(sms_msg.SmsMessage('0', message.getNumber(), '', 'done cfg write for "' + message.getText() + '"' ))
+
 
 try:
 #	 REG_REPLY = UTILS.getServerReply(CONFIG.get('ID_SERVER'))				 # РАСЧЕТ ОТВЕТА РЕГИСТРАЦИИ НА СЕРВЕРЕ НА ОСНОВЕ СВОЕГО ID_SERVER
@@ -142,9 +151,16 @@ try:
 	# Timers
 	#
 	TCP_LOG_TIMER = 0
-	CHECK_SMS_TIMER = MOD.secCounter()
+	# arithmetics used to make always check for sms on first iteration
+	CHECK_SMS_TIMER = MOD.secCounter() - int(CONFIG.get('SMS_CHECK_PERIOD')) - 1
 
 	while(1):
+
+		if ((MOD.secCounter() - CHECK_SMS_TIMER) > int(CONFIG.get('SMS_CHECK_PERIOD'))):
+			DEBUG.send('Processing SMS')
+			smsProcessing()
+			CHECK_SMS_TIMER = MOD.secCounter()
+
 		# check context
 		context = GSM.checkContext()
 		if(context != '1'):
@@ -244,15 +260,6 @@ try:
 
 		if(len(data) > 0):
 			SERIAL.send(data)
-
-		if ((MOD.secCounter() - CHECK_SMS_TIMER) > int(CONFIG.get('SMS_CHECK_PERIOD'))):
-			DEBUG.send('Processing SMS')
-			smsProcessing()
-			CHECK_SMS_TIMER = MOD.secCounter()
-		else:
-			DEBUG.send('MOD.secCount() = ' + str(MOD.secCounter())
-				+ ', CHECK_SMS_TIMER = ' + str(CHECK_SMS_TIMER)
-				+ ', SMS_CHECK_PERIOD = ' + str(CONFIG.get('SMS_CHECK_PERIOD')));
 
 		resetWatchdog()
 	
