@@ -42,9 +42,9 @@ class SMS:
 		self.debug.send('Trying to receive SMS messages...')
 		r, d = self.gsm.sendAT("AT+CMGL=ALL\r", "OK", 5)
 		if(r == 0):
-			self.debug.send('Got new messages, parsing then...')
 			position = d.find('+CMGL')
 			if(position != -1):
+				self.debug.send('SMS detected. Parsing...')
 				d = d[position:]
 				one = d.split('\r')
 				if(len(one) > 1):
@@ -58,9 +58,19 @@ class SMS:
 						time = header_data[4].replace('"', '') + ',' + header_data[5].replace('"', '')
 						sms = sms_msg.SmsMessage(index, number, time, data)
 						return sms
+			else:
+				# case, when device answered OK, but there is NO +CMGL sentence.
+				# So it looks like only trash is present in memory
+
+				# for me it looks enough for detecting trash
+				position = d.find('"')
+				if (position != -1):
+					self.debug.send('Clearing SMS memory (UNREAD is not touched)')
+					self.deleteReadSms()
 		return None
     
 	def sendSms(self, message):
+		self.debug.send('Sending SMS message. NUMBER: ' + message.getNumber() + '; TEXT: ' + message.getText())
 		r, d = self.gsm.sendAT("AT+CMGS=" + message.getNumber() + "\r", ">", 5)
 		if(r == 0):
 			r, d = self.gsm.sendAT(message.getText() + chr(0x1A) + "\r", "OK", 10)
@@ -72,5 +82,12 @@ class SMS:
 	def deleteSms(self, index):
 		r, d = self.gsm.sendAT("AT+CMGD=" + index + "\r", "OK", 5)
 		if(r == 0):
+			return 0
+		return -1
+
+	# delete all messsages not marked as UNREAD
+	def deleteReadSms(self):
+		r, d = self.gsm.sendAT("AT+CMGD=1,3\r", "OK", 5)
+		if (r == 0):
 			return 0
 		return -1
