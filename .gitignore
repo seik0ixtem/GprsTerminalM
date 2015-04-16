@@ -6,6 +6,10 @@
 
 # ignore files with private data
 settings.ini
+settings.ini.*
+
+# vim swap files
+*.swo
 
 tags
 
