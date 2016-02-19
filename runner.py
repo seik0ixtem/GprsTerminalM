@@ -247,21 +247,36 @@ try:
 
 		# serial to tcp
 
-		data = SERIAL.receive(int(CONFIG.get('TCP_MAX_LENGTH')))
-		if(len(data) > 0):
-			GSM.sendMDM(data)
+		lastActivityTime = MOD.secCounter()
+
+		while (1):
+
+			activityDetected = 0
+
+			data = SERIAL.receive(int(CONFIG.get('TCP_MAX_LENGTH')))
+			if(len(data) > 0):
+				GSM.sendMDM(data)
+				activityDetected = 1
 		
-		# tcp to serial
-		data = ''
-		try:
-			data = GSM.receiveMDM()
-		except Exception, e:
-			DEBUG.send(str(e))
+			# tcp to serial
+			data = ''
+			try:
+				data = GSM.receiveMDM()
+			except Exception, e:
+				DEBUG.send(str(e))
 
-		if(len(data) > 0):
-			SERIAL.send(data)
+			if(len(data) > 0):
+				SERIAL.send(data)
+				activityDetected = 1
 
-		resetWatchdog()
+			resetWatchdog()
+
+			if (activityDetected == 1):
+				lastActivityTime = MOD.secCounter()
+			else:
+				if ((MOD.secCounter() - lastActivityTime) > int(CONFIG.get('TIMEOUT_CONSISTENT_SER'))):
+					DEBUG.send('Consistent minisession broken due to inactivity')
+					break
 	
 except Exception, e:
 	DEBUG.send('Exception!' + str(e))
